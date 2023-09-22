@@ -46,26 +46,26 @@ static void mqtt_vCreate_content_message_json_data(uint8_t u8Flag_temp_humi, flo
         cJSON_AddItemToObject(root, "trans_code", cJSON_CreateNumber(u8Trans_code));
     }
     message_json_publish = cJSON_Print(root);
-    // snprintf(message_json_publish, 15, "{\"name\":11111}");
     cJSON_Delete(root);
 
     if (message_json_publish != NULL)
     {
-        snprintf(message_publish, 200, "AT+UMQTTC=9,0,0,\"sotatek/living_room\",14\r\n");
-        // snprintf(message_publish, 200, "AT+UMQTTC=2,0,0,0,\"sotatek/living_room\",\"hello\"\r\n");
-        printf("%s\n", message_publish);
-        snprintf(message_publish2, 17, "%s\r\n", "{\"name\":11111}");
+        snprintf(message_publish, 200, "AT+UMQTTC=9,0,0,\"sotatek/living_room\",%d\r\n", strlen(message_json_publish));
+        snprintf(message_publish2, 200, "%s\r\n", message_json_publish);
     }
 }
 
 void lena_vPublish_data_sensor()
 {
     snprintf(mac_address, sizeof(mac_address), "%02x%02x%02x%02x%02x%02x", u8Mac_address[0], u8Mac_address[1], u8Mac_address[2], u8Mac_address[3], u8Mac_address[4], u8Mac_address[5]);
+
+    // publish temperature value
     mqtt_vCreate_content_message_json_data(FLAG_TEMPERATURE, f_Sht3x_temp);
     uart_write_bytes(2, message_publish, strlen(message_publish));
-    printf("%s\n", message_publish2);
     uart_write_bytes(2, message_publish2, 200);
 
-    // mqtt_vCreate_content_message_json_data(FLAG_HUMIDITY, f_Sht3x_humi);
-    // uart_write_bytes(2, message_publish, 200);
+    // publish humidity value
+    mqtt_vCreate_content_message_json_data(FLAG_HUMIDITY, f_Sht3x_humi);
+    uart_write_bytes(2, message_publish, strlen(message_publish));
+    uart_write_bytes(2, message_publish2, 200);
 }
