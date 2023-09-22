@@ -10,6 +10,7 @@
 
 #include "bee_cJSON.h"
 #include "bee_Sht3x.h"
+#include "bee_Uart.h"
 #include "bee_Lena_r8.h"
 
 float f_Sht3x_temp;
@@ -18,8 +19,8 @@ float f_Sht3x_humi;
 static uint8_t u8Trans_code = 0;
 static uint8_t u8Mac_address[6] = {0xb8, 0xd6, 0x1a, 0x6b, 0x2d, 0xe8};
 static char message_publish[200];
-static char message_publish2[200];
-static char mac_address[20];
+static char message_publish_content_for_publish_mqtt_binary[200];
+static char mac_address[13];
 
 static void mqtt_vCreate_content_message_json_data(uint8_t u8Flag_temp_humi, float f_Value)
 {
@@ -51,7 +52,7 @@ static void mqtt_vCreate_content_message_json_data(uint8_t u8Flag_temp_humi, flo
     if (message_json_publish != NULL)
     {
         snprintf(message_publish, 200, "AT+UMQTTC=9,0,0,\"sotatek/living_room\",%d\r\n", strlen(message_json_publish));
-        snprintf(message_publish2, 200, "%s\r\n", message_json_publish);
+        snprintf(message_publish_content_for_publish_mqtt_binary, 200, "%s\r\n", message_json_publish);
     }
 }
 
@@ -61,11 +62,11 @@ void lena_vPublish_data_sensor()
 
     // publish temperature value
     mqtt_vCreate_content_message_json_data(FLAG_TEMPERATURE, f_Sht3x_temp);
-    uart_write_bytes(2, message_publish, strlen(message_publish));
-    uart_write_bytes(2, message_publish2, 200);
+    uart_write_bytes(EX_UART_NUM, message_publish, strlen(message_publish));
+    uart_write_bytes(EX_UART_NUM, message_publish_content_for_publish_mqtt_binary, 200);
 
     // publish humidity value
     mqtt_vCreate_content_message_json_data(FLAG_HUMIDITY, f_Sht3x_humi);
-    uart_write_bytes(2, message_publish, strlen(message_publish));
-    uart_write_bytes(2, message_publish2, 200);
+    uart_write_bytes(EX_UART_NUM, message_publish, strlen(message_publish));
+    uart_write_bytes(EX_UART_NUM, message_publish_content_for_publish_mqtt_binary, 200);
 }
