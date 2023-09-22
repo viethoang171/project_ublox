@@ -56,6 +56,36 @@ static void mqtt_vCreate_content_message_json_data(uint8_t u8Flag_temp_humi, flo
     }
 }
 
+void lena_vConfigure_credential()
+{
+    char command_AT[200] = {};
+
+    // config client Id
+    snprintf(command_AT, 200, "AT+UMQTT=0,\"client Id\"\r\n");
+    uart_write_bytes(EX_UART_NUM, command_AT, strlen(command_AT));
+
+    // config IP broker and port
+    snprintf(command_AT, 200, "AT+UMQTT=3,\"61.28.238.97\",1993\"\r\n");
+    uart_write_bytes(EX_UART_NUM, command_AT, strlen(command_AT));
+
+    // config broker user name and password
+    snprintf(command_AT, 200, "AT+UMQTT=4,\"VBeeHome\",\"123abcA@!\"\"\r\n");
+    uart_write_bytes(EX_UART_NUM, command_AT, strlen(command_AT));
+}
+
+void lena_vConnect_mqtt_broker()
+{
+    char command_AT[200] = {};
+
+    // CGACT
+    snprintf(command_AT, 200, "AT+CGACT=1,1\"\r\n");
+    uart_write_bytes(EX_UART_NUM, command_AT, strlen(command_AT));
+
+    // AT connect
+    snprintf(command_AT, 200, "AT+UMQTTC=1\"\r\n");
+    uart_write_bytes(EX_UART_NUM, command_AT, strlen(command_AT));
+}
+
 void lena_vPublish_data_sensor()
 {
     snprintf(mac_address, sizeof(mac_address), "%02x%02x%02x%02x%02x%02x", u8Mac_address[0], u8Mac_address[1], u8Mac_address[2], u8Mac_address[3], u8Mac_address[4], u8Mac_address[5]);
