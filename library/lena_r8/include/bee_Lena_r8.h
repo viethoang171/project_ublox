@@ -15,6 +15,9 @@
 #define BEE_USER_NAME "VBeeHome"
 #define BEE_USER_PASSWORD "123abcA@!"
 
+#define OBJECT_TYPE_TEMP "temperature"
+#define OBJECT_TYPE_HUM "humidity"
+
 void lena_vConnect_mqtt_broker();
 void lena_vPublish_data_sensor();
 void lena_vConfigure_credential();
