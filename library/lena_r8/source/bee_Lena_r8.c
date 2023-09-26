@@ -4,6 +4,7 @@
  * @date 21 September 2023
  * @brief module SIM LENA-R8 with API, init, connect MQTT broker, configure parameters and publish/subscribe data sensor
  */
+#include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
 #include "driver/uart.h"
 #include <stdio.h>
@@ -55,22 +56,48 @@ static void mqtt_vCreate_content_message_json_data(uint8_t u8Flag_temp_humi, flo
     if (message_json_publish != NULL)
     {
         snprintf(message_publish, 200, "AT+UMQTTC=9,0,0,\"VB/DMP/VBEEON/BEE/SMH/b8d61a6b2de8/telemetry\",%d\r\n", strlen(message_json_publish));
-        printf("%s\n", message_publish);
         snprintf(message_publish_content_for_publish_mqtt_binary, 200, "%s\r\n", message_json_publish);
     }
 }
 
-static void mqtt_vSubscribe_command_server_task(void *params)
+void mqtt_vSubscribe_command_server_task()
 {
-    char message_subscribe[200];
+    char command_AT[200] = {};
+    char list_message_subscribe[200] = {};
+    char message_subscribe[200] = {};
 
-    QueueHandle_t queue, queue_host_main;
-    queue = xQueueCreate(SIZE_QUEUE_TASK_SUB, sizeof(message_subscribe));
-    queue_host_main = xQueueCreate(SIZE_QUEUE_TASK_SUB, sizeof(message_subscribe));
+    // create AT command to subscribe topic on broker
+    snprintf(command_AT, 200, "AT+UMQTTC=4,0,\"VB/DMP/VBEEON/BEE/SMH/b8d61a6b2de8/command\"\r\n");
+    uart_write_bytes(EX_UART_NUM, command_AT, strlen(command_AT));
+
     for (;;)
     {
-        if (xQueueReceive(queue, &message_subscribe, (TickType_t)portMAX_DELAY))
+        // If broker publish message for module
+        uart_read_bytes(EX_UART_NUM, list_message_subscribe, 200, pdMS_TO_TICKS(1000));
+
+        // If receive response from LENA-R8 that has messages from broker
+        if (strstr(list_message_subscribe, "+UUMQTTC:") != NULL)
         {
+            // Read message from broker
+            snprintf(command_AT, 200, "AT+UMQTTC=6,1\r\n");
+            uart_write_bytes(EX_UART_NUM, command_AT, strlen(command_AT));
+            uart_read_bytes(EX_UART_NUM, message_subscribe, 300, pdMS_TO_TICKS(1000));
+
+            char *start_json = strstr(message_subscribe, "{");
+            char message_subscribe[200];
+            uint8_t u8Index = 0;
+            if (start_json != NULL)
+            {
+                while (start_json[u8Index] != '}')
+                {
+                    message_subscribe[u8Index] = start_json[u8Index];
+                    u8Index++;
+                }
+                // printf("%c\n", start_json[u8Index]);
+                message_subscribe[u8Index] = start_json[u8Index];
+                printf("%s\n", message_subscribe);
+            }
+
             cJSON *root = cJSON_Parse(message_subscribe);
             if (root != NULL)
             {
@@ -86,20 +113,26 @@ static void mqtt_vSubscribe_command_server_task(void *params)
                 {
                     if (strcmp(device_id, mac_address) == 0 && strcmp(cmd_name, "Bee.conf") == 0)
                     {
-                        if (strcmp(object_type, OBJECT_TYPE_TEMP) == 0 && (u8Mqtt_status == MQTT_CONNECTED))
+                        if (strcmp(object_type, OBJECT_TYPE_TEMP) == 0)
                         {
-                            mqtt_vCreate_content_message_json_data(FLAG_TEMPERATURE, u8Temperature);
+                            // publish temperature value to broker
+                            mqtt_vCreate_content_message_json_data(FLAG_TEMPERATURE, f_Sht3x_temp);
+                            uart_write_bytes(EX_UART_NUM, message_publish, strlen(message_publish));
+                            uart_write_bytes(EX_UART_NUM, message_publish_content_for_publish_mqtt_binary, 200);
                         }
-                        else if (strcmp(object_type, OBJECT_TYPE_HUM) == 0 && (u8Mqtt_status == MQTT_CONNECTED))
+                        else if (strcmp(object_type, OBJECT_TYPE_HUM) == 0)
                         {
-
-                            mqtt_vCreate_content_message_json_data(FLAG_HUMIDITY, u8Humidity);
+                            // publish humidity value to broker
+                            mqtt_vCreate_content_message_json_data(FLAG_HUMIDITY, f_Sht3x_humi);
+                            uart_write_bytes(EX_UART_NUM, message_publish, strlen(message_publish));
+                            uart_write_bytes(EX_UART_NUM, message_publish_content_for_publish_mqtt_binary, 200);
                         }
                     }
                 }
                 cJSON_Delete(root);
             }
         }
+        vTaskDelay(pdMS_TO_TICKS(10));
     }
 }
 

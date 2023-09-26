@@ -18,7 +18,11 @@
 #define OBJECT_TYPE_TEMP "temperature"
 #define OBJECT_TYPE_HUM "humidity"
 
+#define BEE_TIME_PUBLISH_DATA_SENSOR 30000
+
+void lena_vConfigure_credential();
 void lena_vConnect_mqtt_broker();
 void lena_vPublish_data_sensor();
-void lena_vConfigure_credential();
+void mqtt_vSubscribe_command_server_task();
+
 #endif
