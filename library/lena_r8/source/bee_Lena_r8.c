@@ -56,7 +56,6 @@ static void mqtt_vCreate_content_message_json_data(uint8_t u8Flag_temp_humi, flo
     if (message_json_publish != NULL)
     {
         snprintf(message_publish, 200, "AT+UMQTTC=9,0,0,%s,%d\r\n", BEE_TOPIC_PUBLISH, strlen(message_json_publish));
-        printf("%s\n", message_publish);
         snprintf(message_publish_content_for_publish_mqtt_binary, 200, "%s\r\n", message_json_publish);
     }
 }
