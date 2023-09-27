@@ -55,7 +55,8 @@ static void mqtt_vCreate_content_message_json_data(uint8_t u8Flag_temp_humi, flo
 
     if (message_json_publish != NULL)
     {
-        snprintf(message_publish, 200, "AT+UMQTTC=9,0,0,\"VB/DMP/VBEEON/BEE/SMH/b8d61a6b2de8/telemetry\",%d\r\n", strlen(message_json_publish));
+        snprintf(message_publish, 200, "AT+UMQTTC=9,0,0,%s,%d\r\n", BEE_TOPIC_PUBLISH, strlen(message_json_publish));
+        printf("%s\n", message_publish);
         snprintf(message_publish_content_for_publish_mqtt_binary, 200, "%s\r\n", message_json_publish);
     }
 }
@@ -67,7 +68,8 @@ void mqtt_vSubscribe_command_server_task()
     char message_subscribe[200] = {};
 
     // create AT command to subscribe topic on broker
-    snprintf(command_AT, 200, "AT+UMQTTC=4,0,\"VB/DMP/VBEEON/BEE/SMH/b8d61a6b2de8/command\"\r\n");
+    snprintf(command_AT, 200, "AT+UMQTTC=4,0,%s\r\n", BEE_TOPIC_SUBSCRIBE);
+    printf("%s\n", command_AT);
     uart_write_bytes(EX_UART_NUM, command_AT, strlen(command_AT));
 
     for (;;)
@@ -141,15 +143,15 @@ void lena_vConfigure_credential()
     char command_AT[200] = {};
 
     // config client Id
-    snprintf(command_AT, 200, "AT+UMQTT=0,\"device:029f567e-767a-4250-bd7b-6dfa6191f38b\"\r\n");
+    snprintf(command_AT, 200, "AT+UMQTT=0,%s\r\n", BEE_MQTT_CLIENT_ID);
     uart_write_bytes(EX_UART_NUM, command_AT, strlen(command_AT));
 
     // config IP broker and port
-    snprintf(command_AT, 200, "AT+UMQTT=3,\"61.28.238.97\",1993\r\n");
+    snprintf(command_AT, 200, "AT+UMQTT=3,%s,%s\r\n", BEE_MQTT_BROKER_URL, BEE_BROKER_PORT);
     uart_write_bytes(EX_UART_NUM, command_AT, strlen(command_AT));
 
     // config broker user name and password
-    snprintf(command_AT, 200, "AT+UMQTT=4,\"VBeeHome\",\"123abcA@!\"\r\n");
+    snprintf(command_AT, 200, "AT+UMQTT=4,%s,%s\r\n", BEE_USER_NAME, BEE_USER_PASSWORD);
     uart_write_bytes(EX_UART_NUM, command_AT, strlen(command_AT));
 }
 
