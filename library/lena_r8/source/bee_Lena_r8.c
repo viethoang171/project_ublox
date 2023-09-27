@@ -93,7 +93,6 @@ void mqtt_vSubscribe_command_server_task()
                     message_subscribe[u8Index] = start_json[u8Index];
                     u8Index++;
                 }
-                // printf("%c\n", start_json[u8Index]);
                 message_subscribe[u8Index] = start_json[u8Index];
                 printf("%s\n", message_subscribe);
             }
@@ -130,6 +129,7 @@ void mqtt_vSubscribe_command_server_task()
                     }
                 }
                 cJSON_Delete(root);
+                message_subscribe[0] = '\0';
             }
         }
         vTaskDelay(pdMS_TO_TICKS(10));

@@ -212,7 +212,7 @@ static sht3x_sensor_t *sensor; // sensor device data structure
 
 /* -- main program ------------------------------------------------- */
 
-static void user_task(void *pvParameters)
+static void sht3x_vProcess_data_sensor(void *pvParameters)
 {
     float temperature;
     float humidity;
@@ -249,7 +249,7 @@ void sht3x_start(void)
     if ((sensor = sht3x_init_sensor(I2C_BUS, SHT3x_ADDR_1)))
     {
         // Create a user task that uses the sensors.
-        xTaskCreate(user_task, "user_task", TASK_STACK_DEPTH, NULL, 3, NULL);
+        xTaskCreate(sht3x_vProcess_data_sensor, "sht3x_vProcess_data_sensor", TASK_STACK_DEPTH, NULL, 3, NULL);
     }
     else
         printf("Could not initialize SHT3x sensor\n");
