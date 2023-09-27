@@ -69,7 +69,6 @@ void mqtt_vSubscribe_command_server_task()
 
     // create AT command to subscribe topic on broker
     snprintf(command_AT, 200, "AT+UMQTTC=4,0,%s\r\n", BEE_TOPIC_SUBSCRIBE);
-    printf("%s\n", command_AT);
     uart_write_bytes(EX_UART_NUM, command_AT, strlen(command_AT));
 
     for (;;)
@@ -96,7 +95,6 @@ void mqtt_vSubscribe_command_server_task()
                     u8Index++;
                 }
                 message_subscribe[u8Index] = start_json[u8Index];
-                printf("%s\n", message_subscribe);
             }
 
             cJSON *root = cJSON_Parse(message_subscribe);
