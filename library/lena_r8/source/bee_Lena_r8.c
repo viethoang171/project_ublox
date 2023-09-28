@@ -66,10 +66,6 @@ void mqtt_vSubscribe_command_server_task()
     char list_message_subscribe[200] = {};
     char message_subscribe[200] = {};
 
-    // create AT command to subscribe topic on broker
-    snprintf(command_AT, 200, "AT+UMQTTC=4,0,%s\r\n", BEE_TOPIC_SUBSCRIBE);
-    uart_write_bytes(EX_UART_NUM, command_AT, strlen(command_AT));
-
     for (;;)
     {
         // If broker publish message for module
@@ -166,6 +162,10 @@ void lena_vConnect_mqtt_broker()
     snprintf(command_AT, 200, "AT+UMQTTC=1\r\n");
     uart_write_bytes(EX_UART_NUM, command_AT, strlen(command_AT));
     uart_read_bytes(EX_UART_NUM, receive_AT, 2, portMAX_DELAY);
+
+    // create AT command to subscribe topic on broker
+    snprintf(command_AT, 200, "AT+UMQTTC=4,0,%s\r\n", BEE_TOPIC_SUBSCRIBE);
+    uart_write_bytes(EX_UART_NUM, command_AT, strlen(command_AT));
 }
 
 void lena_vPublish_data_sensor()
