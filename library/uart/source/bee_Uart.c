@@ -13,9 +13,10 @@
 
 #include "bee_Uart.h"
 
+extern QueueHandle_t queue_message_response;
+
 void uart_vCreate()
 {
-    QueueHandle_t uart0_queue;
     uart_config_t uart_config = {
         .baud_rate = 115200,
         .data_bits = UART_DATA_8_BITS,
@@ -26,7 +27,7 @@ void uart_vCreate()
     };
 
     // Install UART driver, and get the queue.
-    uart_driver_install(EX_UART_NUM, BUF_SIZE * 2, BUF_SIZE * 2, 20, &uart0_queue, 0);
+    uart_driver_install(EX_UART_NUM, BUF_SIZE * 2, BUF_SIZE * 2, 20, &queue_message_response, 0);
     uart_param_config(EX_UART_NUM, &uart_config);
 
     // Set UART pins (using UART0 default pins ie no changes.)

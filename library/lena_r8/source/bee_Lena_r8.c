@@ -6,6 +6,7 @@
  */
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
+#include "freertos/semphr.h"
 #include "driver/uart.h"
 #include <stdio.h>
 #include <string.h>
@@ -13,9 +14,13 @@
 #include "bee_cJSON.h"
 #include "bee_Sht3x.h"
 #include "bee_Uart.h"
+#include "bee_Led.h"
 #include "bee_Lena_r8.h"
 
 #define SIZE_QUEUE_TASK_SUB 30
+
+QueueHandle_t queue_message_response;
+SemaphoreHandle_t xSemaphore;
 
 float f_Sht3x_temp;
 float f_Sht3x_humi;
@@ -26,8 +31,6 @@ static char message_publish[200];
 static char message_publish_content_for_publish_mqtt_binary[200];
 static char mac_address[13];
 static char mess_response[200];
-
-static QueueHandle_t queue_message_response;
 
 static void mqtt_vCreate_content_message_json_data(uint8_t u8Flag_temp_humi, float f_Value)
 {
@@ -93,7 +96,12 @@ static void lena_vConnect_mqtt_broker()
     // AT connect
     snprintf(command_AT, 200, "AT+UMQTTC=1\r\n");
     uart_write_bytes(EX_UART_NUM, command_AT, strlen(command_AT));
-    uart_read_bytes(EX_UART_NUM, receive_AT, 2, portMAX_DELAY);
+    uart_read_bytes(EX_UART_NUM, receive_AT, 10, portMAX_DELAY);
+    printf("receive_AT: %s\n", receive_AT);
+    if (strstr(receive_AT, "OK") != NULL)
+    {
+        output_vSetLevel(LED_CONNECTED_BROKER, LED_HIGH_LEVEL);
+    }
 
     // create AT command to subscribe topic on broker
     snprintf(command_AT, 200, "AT+UMQTTC=4,0,%s\r\n", BEE_TOPIC_SUBSCRIBE);
@@ -135,18 +143,18 @@ static void mqtt_vRead_response_task()
 {
     char list_message_subscribe[200] = {};
 
-    xQueueCreate(BEE_QUEUE_LENGTH, sizeof(list_message_subscribe));
-
     for (;;)
     {
         // If broker publish message for module
         uart_read_bytes(EX_UART_NUM, list_message_subscribe, 200, pdMS_TO_TICKS(1000));
-        printf("%s\n", list_message_subscribe);
         if (strstr(list_message_subscribe, "+UUMQTTC:") != NULL)
         {
             // Read message from broker
             snprintf(mess_response, 200, "AT+UMQTTC=6,1\r\n");
             xQueueSend(queue_message_response, mess_response, (TickType_t)0);
+            if (xSemaphoreTake(xSemaphore, portMAX_DELAY))
+            {
+            }
             list_message_subscribe[0] = '\0';
         }
         vTaskDelay(pdMS_TO_TICKS(10));
@@ -157,6 +165,7 @@ static void mqtt_vSubscribe_command_server_task()
 {
     char message_subscribe[200] = {};
 
+    xQueueCreate(BEE_QUEUE_LENGTH, sizeof(mess_response));
     for (;;)
     {
         // If receive response from LENA-R8 that has messages from broker
@@ -166,7 +175,6 @@ static void mqtt_vSubscribe_command_server_task()
             uart_read_bytes(EX_UART_NUM, message_subscribe, 300, pdMS_TO_TICKS(1000));
 
             char *start_json = strstr(message_subscribe, "{");
-            char message_subscribe[200];
             uint8_t u8Index = 0;
             if (start_json != NULL)
             {
@@ -199,6 +207,7 @@ static void mqtt_vSubscribe_command_server_task()
                             mqtt_vCreate_content_message_json_data(FLAG_TEMPERATURE, f_Sht3x_temp);
                             uart_write_bytes(EX_UART_NUM, message_publish, strlen(message_publish));
                             uart_write_bytes(EX_UART_NUM, message_publish_content_for_publish_mqtt_binary, 200);
+                            printf("----------------%s----------------------\n", message_publish_content_for_publish_mqtt_binary);
                         }
                         else if (strcmp(object_type, OBJECT_TYPE_HUM) == 0)
                         {
@@ -211,6 +220,7 @@ static void mqtt_vSubscribe_command_server_task()
                 }
                 cJSON_Delete(root);
                 message_subscribe[0] = '\0';
+                xSemaphoreGive(xSemaphore);
             }
         }
     }
@@ -218,6 +228,9 @@ static void mqtt_vSubscribe_command_server_task()
 
 void mqtt_vLena_r8_start()
 {
+    xSemaphore = xSemaphoreCreateBinary();
+    xSemaphoreGive(xSemaphore);
+
     xTaskCreate(mqtt_vPublish_task, "mqtt_vPublish_task", 1024 * 3, NULL, 2, NULL);
     xTaskCreate(mqtt_vSubscribe_command_server_task, "mqtt_vSubscribe_command_server_task", 1024 * 3, NULL, 1, NULL);
     xTaskCreate(mqtt_vRead_response_task, "mqtt_vRead_response_task", 1024 * 3, NULL, 3, NULL);
