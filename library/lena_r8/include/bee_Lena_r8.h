@@ -24,9 +24,8 @@
 
 #define BEE_TIME_PUBLISH_DATA_SENSOR 30000
 
-void lena_vConfigure_credential();
-void lena_vConnect_mqtt_broker();
-void lena_vPublish_data_sensor();
-void mqtt_vSubscribe_command_server_task();
+#define BEE_QUEUE_LENGTH 30
+
+void mqtt_vLena_r8_start();
 
 #endif

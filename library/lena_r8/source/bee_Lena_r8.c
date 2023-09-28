@@ -25,6 +25,9 @@ static uint8_t u8Mac_address[6] = {0xb8, 0xd6, 0x1a, 0x6b, 0x2d, 0xe8};
 static char message_publish[200];
 static char message_publish_content_for_publish_mqtt_binary[200];
 static char mac_address[13];
+static char mess_response[200];
+
+static QueueHandle_t queue_message_response;
 
 static void mqtt_vCreate_content_message_json_data(uint8_t u8Flag_temp_humi, float f_Value)
 {
@@ -60,23 +63,106 @@ static void mqtt_vCreate_content_message_json_data(uint8_t u8Flag_temp_humi, flo
     }
 }
 
-void mqtt_vSubscribe_command_server_task()
+static void lena_vConfigure_credential()
 {
     char command_AT[200] = {};
+
+    // config client Id
+    snprintf(command_AT, 200, "AT+UMQTT=0,%s\r\n", BEE_MQTT_CLIENT_ID);
+    uart_write_bytes(EX_UART_NUM, command_AT, strlen(command_AT));
+
+    // config IP broker and port
+    snprintf(command_AT, 200, "AT+UMQTT=3,%s,%s\r\n", BEE_MQTT_BROKER_URL, BEE_BROKER_PORT);
+    uart_write_bytes(EX_UART_NUM, command_AT, strlen(command_AT));
+
+    // config broker user name and password
+    snprintf(command_AT, 200, "AT+UMQTT=4,%s,%s\r\n", BEE_USER_NAME, BEE_USER_PASSWORD);
+    uart_write_bytes(EX_UART_NUM, command_AT, strlen(command_AT));
+}
+
+static void lena_vConnect_mqtt_broker()
+{
+    char command_AT[200] = {};
+    char receive_AT[200] = {};
+
+    // CGACT
+    snprintf(command_AT, 200, "AT+CGACT=1,1\r\n");
+    uart_write_bytes(EX_UART_NUM, command_AT, strlen(command_AT));
+    uart_read_bytes(EX_UART_NUM, receive_AT, 2, portMAX_DELAY);
+
+    // AT connect
+    snprintf(command_AT, 200, "AT+UMQTTC=1\r\n");
+    uart_write_bytes(EX_UART_NUM, command_AT, strlen(command_AT));
+    uart_read_bytes(EX_UART_NUM, receive_AT, 2, portMAX_DELAY);
+
+    // create AT command to subscribe topic on broker
+    snprintf(command_AT, 200, "AT+UMQTTC=4,0,%s\r\n", BEE_TOPIC_SUBSCRIBE);
+    uart_write_bytes(EX_UART_NUM, command_AT, strlen(command_AT));
+}
+
+static void lena_vPublish_data_sensor()
+{
+    snprintf(mac_address, sizeof(mac_address), "%02x%02x%02x%02x%02x%02x", u8Mac_address[0], u8Mac_address[1], u8Mac_address[2], u8Mac_address[3], u8Mac_address[4], u8Mac_address[5]);
+
+    // publish temperature value
+    mqtt_vCreate_content_message_json_data(FLAG_TEMPERATURE, f_Sht3x_temp);
+    uart_write_bytes(EX_UART_NUM, message_publish, strlen(message_publish));
+    uart_write_bytes(EX_UART_NUM, message_publish_content_for_publish_mqtt_binary, 200);
+
+    // publish humidity value
+    mqtt_vCreate_content_message_json_data(FLAG_HUMIDITY, f_Sht3x_humi);
+    uart_write_bytes(EX_UART_NUM, message_publish, strlen(message_publish));
+    uart_write_bytes(EX_UART_NUM, message_publish_content_for_publish_mqtt_binary, 200);
+}
+
+static void mqtt_vPublish_task()
+{
+    static TickType_t last_time_publish = 0;
+    lena_vConfigure_credential();
+    lena_vConnect_mqtt_broker();
+    for (;;)
+    {
+        if (xTaskGetTickCount() - last_time_publish > pdMS_TO_TICKS(BEE_TIME_PUBLISH_DATA_SENSOR))
+        {
+            lena_vPublish_data_sensor();
+            last_time_publish = xTaskGetTickCount();
+        }
+        vTaskDelay(pdMS_TO_TICKS(10));
+    }
+}
+
+static void mqtt_vRead_response_task()
+{
     char list_message_subscribe[200] = {};
-    char message_subscribe[200] = {};
+
+    xQueueCreate(BEE_QUEUE_LENGTH, sizeof(list_message_subscribe));
 
     for (;;)
     {
         // If broker publish message for module
         uart_read_bytes(EX_UART_NUM, list_message_subscribe, 200, pdMS_TO_TICKS(1000));
-
-        // If receive response from LENA-R8 that has messages from broker
+        printf("%s\n", list_message_subscribe);
         if (strstr(list_message_subscribe, "+UUMQTTC:") != NULL)
         {
             // Read message from broker
-            snprintf(command_AT, 200, "AT+UMQTTC=6,1\r\n");
-            uart_write_bytes(EX_UART_NUM, command_AT, strlen(command_AT));
+            snprintf(mess_response, 200, "AT+UMQTTC=6,1\r\n");
+            xQueueSend(queue_message_response, mess_response, (TickType_t)0);
+            list_message_subscribe[0] = '\0';
+        }
+        vTaskDelay(pdMS_TO_TICKS(10));
+    }
+}
+
+static void mqtt_vSubscribe_command_server_task()
+{
+    char message_subscribe[200] = {};
+
+    for (;;)
+    {
+        // If receive response from LENA-R8 that has messages from broker
+        if (xQueueReceive(queue_message_response, &mess_response, (TickType_t)portMAX_DELAY))
+        {
+            uart_write_bytes(EX_UART_NUM, mess_response, strlen(mess_response));
             uart_read_bytes(EX_UART_NUM, message_subscribe, 300, pdMS_TO_TICKS(1000));
 
             char *start_json = strstr(message_subscribe, "{");
@@ -127,58 +213,12 @@ void mqtt_vSubscribe_command_server_task()
                 message_subscribe[0] = '\0';
             }
         }
-        vTaskDelay(pdMS_TO_TICKS(10));
     }
 }
 
-void lena_vConfigure_credential()
+void mqtt_vLena_r8_start()
 {
-    char command_AT[200] = {};
-
-    // config client Id
-    snprintf(command_AT, 200, "AT+UMQTT=0,%s\r\n", BEE_MQTT_CLIENT_ID);
-    uart_write_bytes(EX_UART_NUM, command_AT, strlen(command_AT));
-
-    // config IP broker and port
-    snprintf(command_AT, 200, "AT+UMQTT=3,%s,%s\r\n", BEE_MQTT_BROKER_URL, BEE_BROKER_PORT);
-    uart_write_bytes(EX_UART_NUM, command_AT, strlen(command_AT));
-
-    // config broker user name and password
-    snprintf(command_AT, 200, "AT+UMQTT=4,%s,%s\r\n", BEE_USER_NAME, BEE_USER_PASSWORD);
-    uart_write_bytes(EX_UART_NUM, command_AT, strlen(command_AT));
-}
-
-void lena_vConnect_mqtt_broker()
-{
-    char command_AT[200] = {};
-    char receive_AT[200] = {};
-
-    // CGACT
-    snprintf(command_AT, 200, "AT+CGACT=1,1\r\n");
-    uart_write_bytes(EX_UART_NUM, command_AT, strlen(command_AT));
-    uart_read_bytes(EX_UART_NUM, receive_AT, 2, portMAX_DELAY);
-
-    // AT connect
-    snprintf(command_AT, 200, "AT+UMQTTC=1\r\n");
-    uart_write_bytes(EX_UART_NUM, command_AT, strlen(command_AT));
-    uart_read_bytes(EX_UART_NUM, receive_AT, 2, portMAX_DELAY);
-
-    // create AT command to subscribe topic on broker
-    snprintf(command_AT, 200, "AT+UMQTTC=4,0,%s\r\n", BEE_TOPIC_SUBSCRIBE);
-    uart_write_bytes(EX_UART_NUM, command_AT, strlen(command_AT));
-}
-
-void lena_vPublish_data_sensor()
-{
-    snprintf(mac_address, sizeof(mac_address), "%02x%02x%02x%02x%02x%02x", u8Mac_address[0], u8Mac_address[1], u8Mac_address[2], u8Mac_address[3], u8Mac_address[4], u8Mac_address[5]);
-
-    // publish temperature value
-    mqtt_vCreate_content_message_json_data(FLAG_TEMPERATURE, f_Sht3x_temp);
-    uart_write_bytes(EX_UART_NUM, message_publish, strlen(message_publish));
-    uart_write_bytes(EX_UART_NUM, message_publish_content_for_publish_mqtt_binary, 200);
-
-    // publish humidity value
-    mqtt_vCreate_content_message_json_data(FLAG_HUMIDITY, f_Sht3x_humi);
-    uart_write_bytes(EX_UART_NUM, message_publish, strlen(message_publish));
-    uart_write_bytes(EX_UART_NUM, message_publish_content_for_publish_mqtt_binary, 200);
+    xTaskCreate(mqtt_vPublish_task, "mqtt_vPublish_task", 1024 * 3, NULL, 2, NULL);
+    xTaskCreate(mqtt_vSubscribe_command_server_task, "mqtt_vSubscribe_command_server_task", 1024 * 3, NULL, 1, NULL);
+    xTaskCreate(mqtt_vRead_response_task, "mqtt_vRead_response_task", 1024 * 3, NULL, 3, NULL);
 }
