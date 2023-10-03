@@ -59,7 +59,6 @@ static void mqtt_vCreate_content_message_json_data(uint8_t u8Flag_temp_humi, flo
     if (message_json_publish != NULL)
     {
         snprintf(message_publish, 200, "AT+UMQTTC=9,0,0,%s,%d\r\n", BEE_TOPIC_PUBLISH, strlen(message_json_publish));
-        printf("------------length json: %d----------------------\n", strlen(message_json_publish));
         snprintf(message_publish_content_for_publish_mqtt_binary, 200, "%s\r\n", message_json_publish);
     }
 }
@@ -153,14 +152,14 @@ static void mqtt_vRead_response_task()
             uart_write_bytes(EX_UART_NUM, command_AT, strlen(command_AT));
 
             output_vToggle(LED_CONNECTED_BROKER);
-            snprintf(message_publish, 200, "AT+UMQTTC=9,0,0,%s,%d\r\n", BEE_TOPIC_PUBLISH, 200);
+
             if (strstr(list_message_subscribe, "\"temperature\"") != NULL)
             {
                 snprintf(message_publish_content_for_publish_mqtt_binary, 200,
                          "{\"thing_token\":\"b8d61a6b2de8\","
                          "\"cmd_name\":\"Bee.data\","
                          "\"object_type\":\"temperature\","
-                         "\"values\":%f,"
+                         "\"values\":%.2f,"
                          "\"trans_code\":%d}\r\n",
                          f_Sht3x_temp, u8Trans_code);
             }
@@ -171,14 +170,14 @@ static void mqtt_vRead_response_task()
                          "{\"thing_token\":\"b8d61a6b2de8\","
                          "\"cmd_name\":\"Bee.data\","
                          "\"object_type\":\"humidity\","
-                         "\"values\":%f,"
+                         "\"values\":%.2f,"
                          "\"trans_code\":%d}\r\n",
                          f_Sht3x_humi, u8Trans_code);
             }
+            snprintf(message_publish, 200, "AT+UMQTTC=9,0,0,%s,%d\r\n", BEE_TOPIC_PUBLISH, strlen(message_publish_content_for_publish_mqtt_binary));
             u8Trans_code++;
             list_message_subscribe[0] = '\0';
-            printf("----------------------length json: %d----------------------\n", strlen(message_publish_content_for_publish_mqtt_binary));
-            // printf("%s\n", message_publish_content_for_publish_mqtt_binary);
+
             uart_write_bytes(EX_UART_NUM, message_publish, strlen(message_publish));
             uart_write_bytes(EX_UART_NUM, message_publish_content_for_publish_mqtt_binary, 200);
             message_publish[0] = '\0';
