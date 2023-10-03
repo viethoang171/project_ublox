@@ -59,6 +59,7 @@ static void mqtt_vCreate_content_message_json_data(uint8_t u8Flag_temp_humi, flo
     if (message_json_publish != NULL)
     {
         snprintf(message_publish, 200, "AT+UMQTTC=9,0,0,%s,%d\r\n", BEE_TOPIC_PUBLISH, strlen(message_json_publish));
+        printf("------------length json: %d----------------------\n", strlen(message_json_publish));
         snprintf(message_publish_content_for_publish_mqtt_binary, 200, "%s\r\n", message_json_publish);
     }
 }
@@ -82,6 +83,7 @@ static void lena_vConfigure_credential()
 
 static void lena_vConnect_mqtt_broker()
 {
+    // Query MQTT's credentials
     char command_AT[200] = {};
     snprintf(command_AT, 200, "AT+UMQTT?\r\n");
     uart_write_bytes(EX_UART_NUM, command_AT, strlen(command_AT));
@@ -108,11 +110,15 @@ static void lena_vPublish_data_sensor()
     mqtt_vCreate_content_message_json_data(FLAG_TEMPERATURE, f_Sht3x_temp);
     uart_write_bytes(EX_UART_NUM, message_publish, strlen(message_publish));
     uart_write_bytes(EX_UART_NUM, message_publish_content_for_publish_mqtt_binary, 200);
+    message_publish[0] = '\0';
+    message_publish_content_for_publish_mqtt_binary[0] = '\0';
 
     // publish humidity value
     mqtt_vCreate_content_message_json_data(FLAG_HUMIDITY, f_Sht3x_humi);
     uart_write_bytes(EX_UART_NUM, message_publish, strlen(message_publish));
     uart_write_bytes(EX_UART_NUM, message_publish_content_for_publish_mqtt_binary, 200);
+    message_publish[0] = '\0';
+    message_publish_content_for_publish_mqtt_binary[0] = '\0';
 }
 
 static void mqtt_vPublish_task()
@@ -169,8 +175,10 @@ static void mqtt_vRead_response_task()
                          "\"trans_code\":%d}\r\n",
                          f_Sht3x_humi, u8Trans_code);
             }
+            u8Trans_code++;
             list_message_subscribe[0] = '\0';
-            printf("%s\n", message_publish_content_for_publish_mqtt_binary);
+            printf("----------------------length json: %d----------------------\n", strlen(message_publish_content_for_publish_mqtt_binary));
+            // printf("%s\n", message_publish_content_for_publish_mqtt_binary);
             uart_write_bytes(EX_UART_NUM, message_publish, strlen(message_publish));
             uart_write_bytes(EX_UART_NUM, message_publish_content_for_publish_mqtt_binary, 200);
             message_publish[0] = '\0';
