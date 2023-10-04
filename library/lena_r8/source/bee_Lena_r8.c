@@ -82,10 +82,12 @@ static void lena_vConfigure_credential()
 
 static void lena_vConnect_mqtt_broker()
 {
-    // Query MQTT's credentials
     char command_AT[200] = {};
+
+    // Query MQTT's credentials
     snprintf(command_AT, 200, "AT+UMQTT?\r\n");
     uart_write_bytes(EX_UART_NUM, command_AT, strlen(command_AT));
+    vTaskDelay(pdMS_TO_TICKS(5000));
 
     // CGACT
     snprintf(command_AT, 200, "AT+CGACT=1,1\r\n");
@@ -109,15 +111,21 @@ static void lena_vPublish_data_sensor()
     mqtt_vCreate_content_message_json_data(FLAG_TEMPERATURE, f_Sht3x_temp);
     uart_write_bytes(EX_UART_NUM, message_publish, strlen(message_publish));
     uart_write_bytes(EX_UART_NUM, message_publish_content_for_publish_mqtt_binary, 200);
-    message_publish[0] = '\0';
-    message_publish_content_for_publish_mqtt_binary[0] = '\0';
+    for (uint8_t u8Index = 0; u8Index < 200; u8Index++)
+    {
+        message_publish[u8Index] = '\0';
+        message_publish_content_for_publish_mqtt_binary[u8Index] = '\0';
+    }
 
     // publish humidity value
     mqtt_vCreate_content_message_json_data(FLAG_HUMIDITY, f_Sht3x_humi);
     uart_write_bytes(EX_UART_NUM, message_publish, strlen(message_publish));
     uart_write_bytes(EX_UART_NUM, message_publish_content_for_publish_mqtt_binary, 200);
-    message_publish[0] = '\0';
-    message_publish_content_for_publish_mqtt_binary[0] = '\0';
+    for (uint8_t u8Index = 0; u8Index < 200; u8Index++)
+    {
+        message_publish[u8Index] = '\0';
+        message_publish_content_for_publish_mqtt_binary[u8Index] = '\0';
+    }
 }
 
 static void mqtt_vPublish_task()
@@ -125,6 +133,7 @@ static void mqtt_vPublish_task()
     static TickType_t last_time_publish = 0;
     lena_vConfigure_credential();
     lena_vConnect_mqtt_broker();
+
     for (;;)
     {
         if (xTaskGetTickCount() - last_time_publish > pdMS_TO_TICKS(BEE_TIME_PUBLISH_DATA_SENSOR))
@@ -153,7 +162,7 @@ static void mqtt_vRead_response_task()
 
             output_vToggle(LED_CONNECTED_BROKER);
 
-            if (strstr(list_message_subscribe, "\"temperature\"") != NULL)
+            if (strstr(list_message_subscribe, "\"object_type\":\"temperature\"") != NULL)
             {
                 snprintf(message_publish_content_for_publish_mqtt_binary, 200,
                          "{\"thing_token\":\"b8d61a6b2de8\","
@@ -164,7 +173,7 @@ static void mqtt_vRead_response_task()
                          f_Sht3x_temp, u8Trans_code);
             }
 
-            else if (strstr(list_message_subscribe, "\"humidity\"") != NULL)
+            else if (strstr(list_message_subscribe, "\"object_type\":\"humidity\"") != NULL)
             {
                 snprintf(message_publish_content_for_publish_mqtt_binary, 200,
                          "{\"thing_token\":\"b8d61a6b2de8\","
@@ -174,14 +183,18 @@ static void mqtt_vRead_response_task()
                          "\"trans_code\":%d}\r\n",
                          f_Sht3x_humi, u8Trans_code);
             }
+
             snprintf(message_publish, 200, "AT+UMQTTC=9,0,0,%s,%d\r\n", BEE_TOPIC_PUBLISH, strlen(message_publish_content_for_publish_mqtt_binary));
             u8Trans_code++;
-            list_message_subscribe[0] = '\0';
 
             uart_write_bytes(EX_UART_NUM, message_publish, strlen(message_publish));
             uart_write_bytes(EX_UART_NUM, message_publish_content_for_publish_mqtt_binary, 200);
-            message_publish[0] = '\0';
-            message_publish_content_for_publish_mqtt_binary[0] = '\0';
+            for (uint8_t u8Index = 0; u8Index < 200; u8Index++)
+            {
+                list_message_subscribe[u8Index] = '\0';
+                message_publish[u8Index] = '\0';
+                message_publish_content_for_publish_mqtt_binary[u8Index] = '\0';
+            }
         }
 
         vTaskDelay(pdMS_TO_TICKS(10));
@@ -190,6 +203,7 @@ static void mqtt_vRead_response_task()
 
 void mqtt_vLena_r8_start()
 {
+
     xTaskCreate(mqtt_vPublish_task, "mqtt_vPublish_task", 1024 * 3, NULL, 2, NULL);
     xTaskCreate(mqtt_vRead_response_task, "mqtt_vRead_response_task", 1024 * 3, NULL, 3, NULL);
 }
