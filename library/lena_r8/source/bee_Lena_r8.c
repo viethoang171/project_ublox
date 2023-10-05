@@ -58,7 +58,7 @@ static void mqtt_vCreate_content_message_json_data(uint8_t u8Flag_temp_humi, flo
 
     if (message_json_publish != NULL)
     {
-        snprintf(message_publish, 200, "AT+UMQTTC=9,0,0,%s,%d\r\n", BEE_TOPIC_PUBLISH, strlen(message_json_publish));
+        snprintf(message_publish, 200, "AT+UMQTTC=9,0,0,%s,%d\r\n", BEE_TOPIC_PUBLISH, strlen(message_json_publish) + 1);
         snprintf(message_publish_content_for_publish_mqtt_binary, 200, "%s\r\n", message_json_publish);
     }
 }
@@ -110,7 +110,7 @@ static void lena_vPublish_data_sensor()
     // publish temperature value
     mqtt_vCreate_content_message_json_data(FLAG_TEMPERATURE, f_Sht3x_temp);
     uart_write_bytes(EX_UART_NUM, message_publish, strlen(message_publish));
-    uart_write_bytes(EX_UART_NUM, message_publish_content_for_publish_mqtt_binary, 200);
+    uart_write_bytes(EX_UART_NUM, message_publish_content_for_publish_mqtt_binary, strlen(message_publish_content_for_publish_mqtt_binary) + 1);
     for (uint8_t u8Index = 0; u8Index < 200; u8Index++)
     {
         message_publish[u8Index] = '\0';
@@ -120,7 +120,7 @@ static void lena_vPublish_data_sensor()
     // publish humidity value
     mqtt_vCreate_content_message_json_data(FLAG_HUMIDITY, f_Sht3x_humi);
     uart_write_bytes(EX_UART_NUM, message_publish, strlen(message_publish));
-    uart_write_bytes(EX_UART_NUM, message_publish_content_for_publish_mqtt_binary, 200);
+    uart_write_bytes(EX_UART_NUM, message_publish_content_for_publish_mqtt_binary, strlen(message_publish_content_for_publish_mqtt_binary) + 1);
     for (uint8_t u8Index = 0; u8Index < 200; u8Index++)
     {
         message_publish[u8Index] = '\0';
@@ -145,7 +145,7 @@ static void mqtt_vPublish_task()
     }
 }
 
-static void mqtt_vRead_response_task()
+static void mqtt_vSubscribe_command_server_task()
 {
     char list_message_subscribe[200] = {};
     char command_AT[200] = {};
@@ -153,14 +153,14 @@ static void mqtt_vRead_response_task()
     for (;;)
     {
         // If broker publish message for module
-        uart_read_bytes(EX_UART_NUM, list_message_subscribe, 1000, (TickType_t)0);
+        uart_read_bytes(EX_UART_NUM, list_message_subscribe, 200, (TickType_t)0);
 
         if (strstr(list_message_subscribe, "+UUMQTTC: 6") != NULL)
         {
+            output_vToggle(LED_CONNECTED_BROKER);
+
             snprintf(command_AT, 200, "AT+UMQTTC=6,1\r\n");
             uart_write_bytes(EX_UART_NUM, command_AT, strlen(command_AT));
-
-            output_vToggle(LED_CONNECTED_BROKER);
 
             if (strstr(list_message_subscribe, "\"object_type\":\"temperature\"") != NULL)
             {
@@ -184,11 +184,12 @@ static void mqtt_vRead_response_task()
                          f_Sht3x_humi, u8Trans_code);
             }
 
-            snprintf(message_publish, 200, "AT+UMQTTC=9,0,0,%s,%d\r\n", BEE_TOPIC_PUBLISH, strlen(message_publish_content_for_publish_mqtt_binary));
             u8Trans_code++;
-
+            snprintf(message_publish, 200, "AT+UMQTTC=9,0,0,%s,%d\r\n", BEE_TOPIC_PUBLISH, strlen(message_publish_content_for_publish_mqtt_binary));
             uart_write_bytes(EX_UART_NUM, message_publish, strlen(message_publish));
-            uart_write_bytes(EX_UART_NUM, message_publish_content_for_publish_mqtt_binary, 200);
+            uart_write_bytes(EX_UART_NUM, message_publish_content_for_publish_mqtt_binary, 160);
+            printf("-----------%s-----------------------", message_publish_content_for_publish_mqtt_binary);
+
             for (uint8_t u8Index = 0; u8Index < 200; u8Index++)
             {
                 list_message_subscribe[u8Index] = '\0';
@@ -205,5 +206,5 @@ void mqtt_vLena_r8_start()
 {
 
     xTaskCreate(mqtt_vPublish_task, "mqtt_vPublish_task", 1024 * 3, NULL, 2, NULL);
-    xTaskCreate(mqtt_vRead_response_task, "mqtt_vRead_response_task", 1024 * 3, NULL, 3, NULL);
+    xTaskCreate(mqtt_vSubscribe_command_server_task, "mqtt_vSubscribe_command_server_task", 1024 * 3, NULL, 3, NULL);
 }
