@@ -153,8 +153,8 @@ static void mqtt_vSubscribe_command_server_task()
 
             if (xQueueReceive(queue_message_response, (void *)&uart_event, (TickType_t)portMAX_DELAY))
             {
-                uart_read_bytes(EX_UART_NUM, list_message_subscribe, BEE_LENGTH_AT_COMMAND, (TickType_t)0);
-                // printf("%s\n", list_message_subscribe);
+                uart_read_bytes(EX_UART_NUM, list_message_subscribe, BEE_LENGTH_AT_COMMAND, (TickType_t)5);
+                printf("%s\n", list_message_subscribe);
 
                 if (strstr(list_message_subscribe, "\"object_type\":\"temperature\"") != NULL)
                 {
