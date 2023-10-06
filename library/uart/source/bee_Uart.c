@@ -33,3 +33,6 @@ void uart_vCreate()
     // Set UART pins (using UART0 default pins ie no changes.)
     uart_set_pin(EX_UART_NUM, UART_TX, UART_RX, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
 }
+/****************************************************************************/
+/***        END OF FILE                                                   ***/
+/****************************************************************************/

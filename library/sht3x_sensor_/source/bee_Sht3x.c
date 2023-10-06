@@ -471,3 +471,7 @@ static bool sht3x_get_status(sht3x_sensor_t *dev, uint16_t *status)
     // debug_dev("status=%02x", __FUNCTION__, dev, *status);
     return true;
 }
+
+/****************************************************************************/
+/***        END OF FILE                                                   ***/
+/****************************************************************************/
