@@ -137,7 +137,6 @@ static void mqtt_vParse_json(char *rxBuffer)
     cJSON *root = cJSON_Parse(rxBuffer);
     if (root != NULL)
     {
-        u8Trans_code++;
         char *device_id;
         char *cmd_name;
         char *object_type;
