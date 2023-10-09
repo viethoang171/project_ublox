@@ -28,6 +28,8 @@
 
 #define BEE_LENGTH_AT_COMMAND 200
 
+#define TICK_TIME_TO_SUBSCRIBE_FULL_MESSAGE 5
+
 void mqtt_vLena_r8_start();
 
 #endif

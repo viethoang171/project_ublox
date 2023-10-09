@@ -104,8 +104,6 @@ static void lena_vConnect_mqtt_broker()
 
 static void lena_vPublish_data_sensor()
 {
-    snprintf(mac_address, sizeof(mac_address), "%02x%02x%02x%02x%02x%02x", u8Mac_address[0], u8Mac_address[1], u8Mac_address[2], u8Mac_address[3], u8Mac_address[4], u8Mac_address[5]);
-
     // publish temperature value
     mqtt_vCreate_content_message_json_data(FLAG_TEMPERATURE, f_Sht3x_temp);
     uart_write_bytes(EX_UART_NUM, message_publish, strlen(message_publish));
@@ -134,6 +132,37 @@ static void mqtt_vPublish_task()
     }
 }
 
+static void mqtt_vParse_json(char *rxBuffer)
+{
+    cJSON *root = cJSON_Parse(rxBuffer);
+    if (root != NULL)
+    {
+        u8Trans_code++;
+        char *device_id;
+        char *cmd_name;
+        char *object_type;
+
+        device_id = cJSON_GetObjectItemCaseSensitive(root, "thing_token")->valuestring;
+        cmd_name = cJSON_GetObjectItemCaseSensitive(root, "cmd_name")->valuestring;
+        object_type = cJSON_GetObjectItemCaseSensitive(root, "object_type")->valuestring;
+        if (device_id != NULL && cmd_name != NULL && object_type != NULL)
+        {
+            if (strcmp(device_id, mac_address) == 0 && strcmp(cmd_name, "Bee.conf") == 0)
+            {
+                if (strcmp(object_type, OBJECT_TYPE_TEMP) == 0)
+                {
+                    mqtt_vCreate_content_message_json_data(FLAG_TEMPERATURE, f_Sht3x_temp);
+                }
+                else if (strcmp(object_type, OBJECT_TYPE_HUM) == 0)
+                {
+                    mqtt_vCreate_content_message_json_data(FLAG_HUMIDITY, f_Sht3x_humi);
+                }
+            }
+        }
+        cJSON_Delete(root);
+    }
+}
+
 static void mqtt_vSubscribe_command_server_task()
 {
     char list_message_subscribe[BEE_LENGTH_AT_COMMAND] = {};
@@ -153,22 +182,18 @@ static void mqtt_vSubscribe_command_server_task()
 
             if (xQueueReceive(queue_message_response, (void *)&uart_event, (TickType_t)portMAX_DELAY))
             {
-                uart_read_bytes(EX_UART_NUM, list_message_subscribe, BEE_LENGTH_AT_COMMAND, (TickType_t)5);
-                printf("%s\n", list_message_subscribe);
+                // Read message AT command from broker
+                uart_read_bytes(EX_UART_NUM, list_message_subscribe, BEE_LENGTH_AT_COMMAND, (TickType_t)TICK_TIME_TO_SUBSCRIBE_FULL_MESSAGE);
 
-                if (strstr(list_message_subscribe, "\"object_type\":\"temperature\"") != NULL)
-                {
-                    output_vToggle(LED_CONNECTED_BROKER);
-                    mqtt_vCreate_content_message_json_data(FLAG_TEMPERATURE, f_Sht3x_temp);
-                }
+                // Filter message json
+                list_message_subscribe[strlen(list_message_subscribe) - 9] = '\0';
+                char *message_json_subscribe;
+                message_json_subscribe = strstr(list_message_subscribe, "{");
 
-                else if (strstr(list_message_subscribe, "\"object_type\":\"humidity\"") != NULL)
-                {
-                    output_vToggle(LED_CONNECTED_BROKER);
-                    mqtt_vCreate_content_message_json_data(FLAG_HUMIDITY, f_Sht3x_humi);
-                }
+                // parse json
+                mqtt_vParse_json(message_json_subscribe);
 
-                u8Trans_code++;
+                // Publish message json's data sensor
                 snprintf(message_publish, BEE_LENGTH_AT_COMMAND, "AT+UMQTTC=9,0,0,%s,%d\r\n", BEE_TOPIC_PUBLISH, strlen(message_publish_content_for_publish_mqtt_binary));
                 uart_write_bytes(EX_UART_NUM, message_publish, strlen(message_publish));
                 uart_write_bytes(EX_UART_NUM, message_publish_content_for_publish_mqtt_binary, BEE_LENGTH_AT_COMMAND);
@@ -188,6 +213,8 @@ static void mqtt_vSubscribe_command_server_task()
 
 void mqtt_vLena_r8_start()
 {
+    snprintf(mac_address, sizeof(mac_address), "%02x%02x%02x%02x%02x%02x", u8Mac_address[0], u8Mac_address[1], u8Mac_address[2], u8Mac_address[3], u8Mac_address[4], u8Mac_address[5]);
+
     xTaskCreate(mqtt_vPublish_task, "mqtt_vPublish_task", 1024 * 3, NULL, 2, NULL);
     xTaskCreate(mqtt_vSubscribe_command_server_task, "mqtt_vSubscribe_command_server_task", 1024 * 3, NULL, 3, NULL);
 }
