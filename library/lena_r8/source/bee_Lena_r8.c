@@ -157,6 +157,10 @@ static void mqtt_vParse_json(char *rxBuffer)
                     mqtt_vCreate_content_message_json_data(FLAG_HUMIDITY, f_Sht3x_humi);
                 }
             }
+            else if (strcmp(device_id, mac_address) == 0 && strcmp(cmd_name, "Bee.control_led") == 0)
+            {
+                xTaskCreate(ledc_task, "ledc_task", 2048, NULL, 1, NULL);
+            }
         }
         cJSON_Delete(root);
     }
@@ -214,8 +218,8 @@ void mqtt_vLena_r8_start()
 {
     snprintf(mac_address, sizeof(mac_address), "%02x%02x%02x%02x%02x%02x", u8Mac_address[0], u8Mac_address[1], u8Mac_address[2], u8Mac_address[3], u8Mac_address[4], u8Mac_address[5]);
 
-    xTaskCreate(mqtt_vPublish_task, "mqtt_vPublish_task", 1024 * 3, NULL, 2, NULL);
-    xTaskCreate(mqtt_vSubscribe_command_server_task, "mqtt_vSubscribe_command_server_task", 1024 * 3, NULL, 3, NULL);
+    xTaskCreate(mqtt_vPublish_task, "mqtt_vPublish_task", 1024 * 3, NULL, 3, NULL);
+    xTaskCreate(mqtt_vSubscribe_command_server_task, "mqtt_vSubscribe_command_server_task", 1024 * 3, NULL, 4, NULL);
 }
 /****************************************************************************/
 /***        END OF FILE                                                   ***/

@@ -8,8 +8,8 @@
 #define BEE_UART_H
 #include "driver/gpio.h"
 
-#define UART_TX GPIO_NUM_27
-#define UART_RX GPIO_NUM_26
+#define UART_TX GPIO_NUM_18
+#define UART_RX GPIO_NUM_19
 
 #define EX_UART_NUM UART_NUM_1
 #define BUF_SIZE 1024

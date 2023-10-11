@@ -13,8 +13,19 @@
 #define LED_CONNECTED_BROKER GPIO_NUM_2
 #define LED_HIGH_LEVEL 1
 
+#define SAMPLE_CNT 16
+
+#define LEDC_BLUE GPIO_NUM_27
+#define LEDC_GREEN GPIO_NUM_26
+#define LEDC_RED GPIO_NUM_25
+
+#define FLAG_LEDC_RED 0
+#define FLAG_LEDC_GREEN 1
+#define FLAG_LEDC_BLUE 2
+
 void output_vCreate(gpio_num_t gpio_num);
 void output_vSetLevel(gpio_num_t gpio_num, int level);
 void output_vToggle(gpio_num_t gpio_num);
+void ledc_task();
 
 #endif
