@@ -12,6 +12,7 @@
 
 #define LED_CONNECTED_BROKER GPIO_NUM_2
 #define LED_HIGH_LEVEL 1
+#define LED_LOW_LEVEL 0
 
 #define SAMPLE_CNT 16
 

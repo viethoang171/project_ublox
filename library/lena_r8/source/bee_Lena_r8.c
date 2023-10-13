@@ -143,23 +143,55 @@ static void mqtt_vParse_json(char *rxBuffer)
 
         device_id = cJSON_GetObjectItemCaseSensitive(root, "thing_token")->valuestring;
         cmd_name = cJSON_GetObjectItemCaseSensitive(root, "cmd_name")->valuestring;
-        object_type = cJSON_GetObjectItemCaseSensitive(root, "object_type")->valuestring;
-        if (device_id != NULL && cmd_name != NULL && object_type != NULL)
+
+        if (device_id != NULL && cmd_name != NULL)
         {
             if (strcmp(device_id, mac_address) == 0 && strcmp(cmd_name, "Bee.conf") == 0)
             {
-                if (strcmp(object_type, OBJECT_TYPE_TEMP) == 0)
+                object_type = cJSON_GetObjectItemCaseSensitive(root, "object_type")->valuestring;
+                if (object_type != NULL)
                 {
-                    mqtt_vCreate_content_message_json_data(FLAG_TEMPERATURE, f_Sht3x_temp);
-                }
-                else if (strcmp(object_type, OBJECT_TYPE_HUM) == 0)
-                {
-                    mqtt_vCreate_content_message_json_data(FLAG_HUMIDITY, f_Sht3x_humi);
+                    if (strcmp(object_type, OBJECT_TYPE_TEMP) == 0)
+                    {
+                        mqtt_vCreate_content_message_json_data(FLAG_TEMPERATURE, f_Sht3x_temp);
+                    }
+                    else if (strcmp(object_type, OBJECT_TYPE_HUM) == 0)
+                    {
+                        mqtt_vCreate_content_message_json_data(FLAG_HUMIDITY, f_Sht3x_humi);
+                    }
                 }
             }
             else if (strcmp(device_id, mac_address) == 0 && strcmp(cmd_name, "Bee.control_led") == 0)
             {
                 xTaskCreate(ledc_task, "ledc_task", 2048, NULL, 1, NULL);
+            }
+            else if (strcmp(device_id, mac_address) == 0 && strcmp(cmd_name, "Bee.control_rgb") == 0)
+            {
+                cJSON *values = cJSON_GetObjectItem(root, "values");
+                if (values != NULL)
+                {
+                    cJSON *red = cJSON_GetObjectItem(values, "red");
+                    cJSON *green = cJSON_GetObjectItem(values, "green");
+                    cJSON *blue = cJSON_GetObjectItem(values, "blue");
+
+                    if (red != NULL && green != NULL && blue != NULL)
+                    {
+                        // Lấy các giá trị red, green, blue
+                        uint8_t red_value = red->valueint;
+                        uint8_t green_value = green->valueint;
+                        uint8_t blue_value = blue->valueint;
+                        if (blue_value == 255)
+                        {
+                            output_vSetLevel(LED_KIT, LED_HIGH_LEVEL);
+                        }
+                        else
+                        {
+                            output_vSetLevel(LED_KIT, LED_LOW_LEVEL);
+                        }
+
+                        printf("Red: %d, Green: %d, Blue: %d\n", red_value, green_value, blue_value);
+                    }
+                }
             }
         }
         cJSON_Delete(root);
