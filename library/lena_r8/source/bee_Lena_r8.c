@@ -17,10 +17,12 @@
 #include "bee_Lena_r8.h"
 
 QueueHandle_t queue_message_response;
+TaskHandle_t xHandle;
 
 float f_Sht3x_temp;
 float f_Sht3x_humi;
 
+static uint8_t u8Flag_exist_task = 0;
 static uint8_t u8Trans_code = 0;
 static uint8_t u8Mac_address[6] = {0xb8, 0xd6, 0x1a, 0x6b, 0x2d, 0xe8};
 static char mac_address[13];
@@ -163,7 +165,15 @@ static void mqtt_vParse_json(char *rxBuffer)
             }
             else if (strcmp(device_id, mac_address) == 0 && strcmp(cmd_name, "Bee.control_led") == 0)
             {
-                xTaskCreate(ledc_task, "ledc_task", 2048, NULL, 1, NULL);
+                if (u8Flag_exist_task == 1)
+                {
+                    vTaskResume(xHandle);
+                }
+                else
+                {
+                    u8Flag_exist_task = 1;
+                    xTaskCreate(ledc_task, "ledc_task", 2048, NULL, 1, &xHandle);
+                }
             }
             else if (strcmp(device_id, mac_address) == 0 && strcmp(cmd_name, "Bee.control_rgb") == 0)
             {
@@ -180,16 +190,9 @@ static void mqtt_vParse_json(char *rxBuffer)
                         uint8_t red_value = red->valueint;
                         uint8_t green_value = green->valueint;
                         uint8_t blue_value = blue->valueint;
-                        if (blue_value == 255)
-                        {
-                            output_vSetLevel(LED_KIT, LED_HIGH_LEVEL);
-                        }
-                        else
-                        {
-                            output_vSetLevel(LED_KIT, LED_LOW_LEVEL);
-                        }
 
-                        printf("Red: %d, Green: %d, Blue: %d\n", red_value, green_value, blue_value);
+                        vTaskSuspend(xHandle);
+                        ledc_set_duty_rgb(red_value, green_value, blue_value);
                     }
                 }
             }
@@ -200,6 +203,7 @@ static void mqtt_vParse_json(char *rxBuffer)
 
 static void mqtt_vSubscribe_command_server_task()
 {
+
     char list_message_subscribe[BEE_LENGTH_AT_COMMAND] = {};
     char *dtmp = (char *)malloc(200);
     char command_AT[BEE_LENGTH_AT_COMMAND] = {};
