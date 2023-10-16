@@ -27,7 +27,8 @@
 void output_vCreate(gpio_num_t gpio_num);
 void output_vSetLevel(gpio_num_t gpio_num, int level);
 void output_vToggle(gpio_num_t gpio_num);
-void ledc_task();
+void ledc_fade_mode_task();
+void ledc_smooth_mode_task();
 void ledc_set_duty_rgb(uint8_t u8Red_value, uint8_t u8Green_value, uint8_t u8Blue_value);
 
 #endif

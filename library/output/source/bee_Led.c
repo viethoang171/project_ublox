@@ -94,7 +94,7 @@ void ledc_set_duty_rgb(uint8_t u8Red_value, uint8_t u8Green_value, uint8_t u8Blu
     printf("Red: %d, Green: %d, Blue: %d\n", u16Red_value_10bit, u16Green_value_10bit, u16Blue_value_10bit);
 }
 
-void ledc_task()
+void ledc_fade_mode_task()
 {
     uint8_t mark_led = 0;
     ledc_init_hardware();
@@ -141,5 +141,48 @@ void ledc_task()
         }
 
         vTaskDelay(100 / portTICK_PERIOD_MS);
+    }
+}
+void ledc_smooth_mode_task()
+{
+    uint8_t mark_led = 0;
+    for (;;)
+    {
+        if (mark_led == 0)
+        {
+            ledc_set_duty(ledc_red_channel.speed_mode, ledc_red_channel.channel, 1023);
+            ledc_update_duty(ledc_red_channel.speed_mode, ledc_red_channel.channel);
+
+            ledc_set_duty(ledc_green_channel.speed_mode, ledc_green_channel.channel, 0);
+            ledc_update_duty(ledc_green_channel.speed_mode, ledc_green_channel.channel);
+
+            ledc_set_duty(ledc_blue_channel.speed_mode, ledc_blue_channel.channel, 0);
+            ledc_update_duty(ledc_blue_channel.speed_mode, ledc_blue_channel.channel);
+        }
+        else if (mark_led == 1)
+        {
+            ledc_set_duty(ledc_red_channel.speed_mode, ledc_red_channel.channel, 0);
+            ledc_update_duty(ledc_red_channel.speed_mode, ledc_red_channel.channel);
+
+            ledc_set_duty(ledc_green_channel.speed_mode, ledc_green_channel.channel, 1023);
+            ledc_update_duty(ledc_green_channel.speed_mode, ledc_green_channel.channel);
+
+            ledc_set_duty(ledc_blue_channel.speed_mode, ledc_blue_channel.channel, 0);
+            ledc_update_duty(ledc_blue_channel.speed_mode, ledc_blue_channel.channel);
+        }
+        else
+        {
+            ledc_set_duty(ledc_red_channel.speed_mode, ledc_red_channel.channel, 0);
+            ledc_update_duty(ledc_red_channel.speed_mode, ledc_red_channel.channel);
+
+            ledc_set_duty(ledc_green_channel.speed_mode, ledc_green_channel.channel, 0);
+            ledc_update_duty(ledc_green_channel.speed_mode, ledc_green_channel.channel);
+
+            ledc_set_duty(ledc_blue_channel.speed_mode, ledc_blue_channel.channel, 1023);
+            ledc_update_duty(ledc_blue_channel.speed_mode, ledc_blue_channel.channel);
+        }
+        mark_led++;
+        mark_led = mark_led % 3;
+        vTaskDelay(200 / portTICK_PERIOD_MS);
     }
 }

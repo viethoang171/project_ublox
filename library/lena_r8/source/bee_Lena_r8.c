@@ -17,12 +17,14 @@
 #include "bee_Lena_r8.h"
 
 QueueHandle_t queue_message_response;
-TaskHandle_t xHandle;
+TaskHandle_t xHandle_fade_mode;
+TaskHandle_t xHandle_smooth_mode;
 
 float f_Sht3x_temp;
 float f_Sht3x_humi;
 
-static uint8_t u8Flag_exist_task = 0;
+static uint8_t u8Flag_exist_task_fade_mode = 0;
+static uint8_t u8Flag_exist_task_smooth_mode = 0;
 static uint8_t u8Trans_code = 0;
 static uint8_t u8Mac_address[6] = {0xb8, 0xd6, 0x1a, 0x6b, 0x2d, 0xe8};
 static char mac_address[13];
@@ -163,16 +165,38 @@ static void mqtt_vParse_json(char *rxBuffer)
                     }
                 }
             }
-            else if (strcmp(device_id, mac_address) == 0 && strcmp(cmd_name, "Bee.control_led") == 0)
+            else if (strcmp(device_id, mac_address) == 0 && strcmp(cmd_name, "Bee.control_led_fade_mode") == 0)
             {
-                if (u8Flag_exist_task == 1)
+                if (u8Flag_exist_task_smooth_mode == 1)
                 {
-                    vTaskResume(xHandle);
+                    vTaskSuspend(xHandle_smooth_mode);
+                }
+
+                if (u8Flag_exist_task_fade_mode == 1)
+                {
+                    vTaskResume(xHandle_fade_mode);
                 }
                 else
                 {
-                    u8Flag_exist_task = 1;
-                    xTaskCreate(ledc_task, "ledc_task", 2048, NULL, 1, &xHandle);
+                    u8Flag_exist_task_fade_mode = 1;
+                    xTaskCreate(ledc_fade_mode_task, "ledc_fade_mode_task", 2048, NULL, 1, &xHandle_fade_mode);
+                }
+            }
+            else if (strcmp(device_id, mac_address) == 0 && strcmp(cmd_name, "Bee.control_led_smooth_mode") == 0)
+            {
+                if (u8Flag_exist_task_fade_mode == 1)
+                {
+                    vTaskSuspend(xHandle_fade_mode);
+                }
+
+                if (u8Flag_exist_task_smooth_mode == 1)
+                {
+                    vTaskResume(xHandle_smooth_mode);
+                }
+                else
+                {
+                    u8Flag_exist_task_smooth_mode = 1;
+                    xTaskCreate(ledc_smooth_mode_task, "ledc_smooth_mode_task", 2048, NULL, 2, &xHandle_smooth_mode);
                 }
             }
             else if (strcmp(device_id, mac_address) == 0 && strcmp(cmd_name, "Bee.control_rgb") == 0)
@@ -191,7 +215,8 @@ static void mqtt_vParse_json(char *rxBuffer)
                         uint8_t green_value = green->valueint;
                         uint8_t blue_value = blue->valueint;
 
-                        vTaskSuspend(xHandle);
+                        vTaskSuspend(xHandle_fade_mode);
+                        vTaskSuspend(xHandle_smooth_mode);
                         ledc_set_duty_rgb(red_value, green_value, blue_value);
                     }
                 }
@@ -254,8 +279,8 @@ void mqtt_vLena_r8_start()
 {
     snprintf(mac_address, sizeof(mac_address), "%02x%02x%02x%02x%02x%02x", u8Mac_address[0], u8Mac_address[1], u8Mac_address[2], u8Mac_address[3], u8Mac_address[4], u8Mac_address[5]);
 
-    xTaskCreate(mqtt_vPublish_task, "mqtt_vPublish_task", 1024 * 3, NULL, 3, NULL);
-    xTaskCreate(mqtt_vSubscribe_command_server_task, "mqtt_vSubscribe_command_server_task", 1024 * 3, NULL, 4, NULL);
+    xTaskCreate(mqtt_vPublish_task, "mqtt_vPublish_task", 1024 * 3, NULL, 4, NULL);
+    xTaskCreate(mqtt_vSubscribe_command_server_task, "mqtt_vSubscribe_command_server_task", 1024 * 3, NULL, 5, NULL);
 }
 /****************************************************************************/
 /***        END OF FILE                                                   ***/

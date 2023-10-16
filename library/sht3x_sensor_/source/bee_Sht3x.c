@@ -249,7 +249,7 @@ void sht3x_start(void)
     if ((sensor = sht3x_init_sensor(I2C_BUS, SHT3x_ADDR_1)))
     {
         // Create a user task that uses the sensors.
-        xTaskCreate(sht3x_vProcess_data_sensor, "sht3x_vProcess_data_sensor", TASK_STACK_DEPTH, NULL, 2, NULL);
+        xTaskCreate(sht3x_vProcess_data_sensor, "sht3x_vProcess_data_sensor", TASK_STACK_DEPTH, NULL, 3, NULL);
     }
     else
         printf("Could not initialize SHT3x sensor\n");
