@@ -30,6 +30,8 @@
 
 #define TICK_TIME_TO_SUBSCRIBE_FULL_MESSAGE 5
 
+#define BEE_EXIST_MODE_LED 1
+
 void mqtt_vLena_r8_start();
 
 #endif

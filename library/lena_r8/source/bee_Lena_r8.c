@@ -167,35 +167,35 @@ static void mqtt_vParse_json(char *rxBuffer)
             }
             else if (strcmp(device_id, mac_address) == 0 && strcmp(cmd_name, "Bee.control_led_fade_mode") == 0)
             {
-                if (u8Flag_exist_task_smooth_mode == 1)
+                if (u8Flag_exist_task_smooth_mode == BEE_EXIST_MODE_LED)
                 {
                     vTaskSuspend(xHandle_smooth_mode);
                 }
 
-                if (u8Flag_exist_task_fade_mode == 1)
+                if (u8Flag_exist_task_fade_mode == BEE_EXIST_MODE_LED)
                 {
                     vTaskResume(xHandle_fade_mode);
                 }
                 else
                 {
-                    u8Flag_exist_task_fade_mode = 1;
+                    u8Flag_exist_task_fade_mode = BEE_EXIST_MODE_LED;
                     xTaskCreate(ledc_fade_mode_task, "ledc_fade_mode_task", 2048, NULL, 1, &xHandle_fade_mode);
                 }
             }
             else if (strcmp(device_id, mac_address) == 0 && strcmp(cmd_name, "Bee.control_led_smooth_mode") == 0)
             {
-                if (u8Flag_exist_task_fade_mode == 1)
+                if (u8Flag_exist_task_fade_mode == BEE_EXIST_MODE_LED)
                 {
                     vTaskSuspend(xHandle_fade_mode);
                 }
 
-                if (u8Flag_exist_task_smooth_mode == 1)
+                if (u8Flag_exist_task_smooth_mode == BEE_EXIST_MODE_LED)
                 {
                     vTaskResume(xHandle_smooth_mode);
                 }
                 else
                 {
-                    u8Flag_exist_task_smooth_mode = 1;
+                    u8Flag_exist_task_smooth_mode = BEE_EXIST_MODE_LED;
                     xTaskCreate(ledc_smooth_mode_task, "ledc_smooth_mode_task", 2048, NULL, 2, &xHandle_smooth_mode);
                 }
             }
