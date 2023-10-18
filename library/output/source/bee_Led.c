@@ -91,7 +91,6 @@ void ledc_set_duty_rgb(uint8_t u8Red_value, uint8_t u8Green_value, uint8_t u8Blu
     // Set value blue ledc
     ledc_set_duty(ledc_blue_channel.speed_mode, ledc_blue_channel.channel, u16Blue_value_10bit);
     ledc_update_duty(ledc_blue_channel.speed_mode, ledc_blue_channel.channel);
-    printf("Red: %d, Green: %d, Blue: %d\n", u16Red_value_10bit, u16Green_value_10bit, u16Blue_value_10bit);
 }
 
 void ledc_fade_mode_task()
@@ -148,7 +147,9 @@ void ledc_smooth_mode_task()
     uint8_t mark_led = 0;
     for (;;)
     {
-        if (mark_led == 0)
+        switch (mark_led)
+        {
+        case FLAG_LEDC_RED:
         {
             ledc_set_duty(ledc_red_channel.speed_mode, ledc_red_channel.channel, 1023);
             ledc_update_duty(ledc_red_channel.speed_mode, ledc_red_channel.channel);
@@ -159,7 +160,8 @@ void ledc_smooth_mode_task()
             ledc_set_duty(ledc_blue_channel.speed_mode, ledc_blue_channel.channel, 0);
             ledc_update_duty(ledc_blue_channel.speed_mode, ledc_blue_channel.channel);
         }
-        else if (mark_led == 1)
+        break;
+        case FLAG_LEDC_GREEN:
         {
             ledc_set_duty(ledc_red_channel.speed_mode, ledc_red_channel.channel, 0);
             ledc_update_duty(ledc_red_channel.speed_mode, ledc_red_channel.channel);
@@ -170,7 +172,8 @@ void ledc_smooth_mode_task()
             ledc_set_duty(ledc_blue_channel.speed_mode, ledc_blue_channel.channel, 0);
             ledc_update_duty(ledc_blue_channel.speed_mode, ledc_blue_channel.channel);
         }
-        else
+        break;
+        case FLAG_LEDC_BLUE:
         {
             ledc_set_duty(ledc_red_channel.speed_mode, ledc_red_channel.channel, 0);
             ledc_update_duty(ledc_red_channel.speed_mode, ledc_red_channel.channel);
@@ -181,6 +184,10 @@ void ledc_smooth_mode_task()
             ledc_set_duty(ledc_blue_channel.speed_mode, ledc_blue_channel.channel, 1023);
             ledc_update_duty(ledc_blue_channel.speed_mode, ledc_blue_channel.channel);
         }
+        default:
+            break;
+        }
+
         mark_led++;
         mark_led = mark_led % 3;
         vTaskDelay(200 / portTICK_PERIOD_MS);
