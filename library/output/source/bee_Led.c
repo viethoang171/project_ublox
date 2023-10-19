@@ -35,7 +35,7 @@ void output_vToggle(gpio_num_t gpio_num)
     gpio_set_level(gpio_num, 1 - previous_level);
 }
 
-static void ledc_init_hardware()
+void ledc_init_hardware()
 {
     adc1_config_width(ADC_WIDTH_BIT_10);
     adc1_config_channel_atten(adc_channel, ADC_ATTEN_DB_11);
@@ -96,7 +96,6 @@ void ledc_set_duty_rgb(uint8_t u8Red_value, uint8_t u8Green_value, uint8_t u8Blu
 void ledc_fade_mode_task()
 {
     uint8_t mark_led = 0;
-    ledc_init_hardware();
     for (;;)
     {
         uint32_t adc_val = 0;
@@ -191,5 +190,69 @@ void ledc_smooth_mode_task()
         mark_led++;
         mark_led = mark_led % 3;
         vTaskDelay(200 / portTICK_PERIOD_MS);
+    }
+}
+void ledc_mix_fade_mode_task()
+{
+    uint8_t mark_led = 0;
+    uint32_t adc_val_first_led = 0;
+    uint32_t adc_val_second_led = 0;
+    uint8_t u8Mark_inc_dec = FLAG_INCREASE;
+    for (;;)
+    {
+        if (u8Mark_inc_dec == FLAG_INCREASE)
+        {
+            adc_val_first_led += STEP_INTENSITY_FIRST_LED;
+            adc_val_second_led += STEP_INTENSITY_SECOND_LED;
+        }
+        else
+        {
+            adc_val_first_led -= STEP_INTENSITY_FIRST_LED;
+            adc_val_second_led -= STEP_INTENSITY_SECOND_LED;
+        }
+        if (adc_val_first_led == HIGH_LEVEL_FIRST_LED || adc_val_second_led == HIGH_LEVEL_SECOND_LED)
+        {
+            u8Mark_inc_dec = FLAG_DECREASE;
+        }
+        else if (adc_val_first_led < LOW_LEVEL_FIRST_LED || adc_val_second_led < LOW_LEVEL_SECOND_LED)
+        {
+            u8Mark_inc_dec = FLAG_INCREASE;
+            mark_led++;
+            mark_led = mark_led % 3;
+        }
+
+        switch (mark_led)
+        {
+        case FLAG_LEDC_PURPLE:
+        {
+            ledc_set_duty(ledc_blue_channel.speed_mode, ledc_blue_channel.channel, adc_val_first_led);
+            ledc_set_duty(ledc_red_channel.speed_mode, ledc_red_channel.channel, adc_val_second_led);
+            ledc_update_duty(ledc_red_channel.speed_mode, ledc_red_channel.channel);
+            ledc_update_duty(ledc_blue_channel.speed_mode, ledc_blue_channel.channel);
+        }
+        break;
+
+        case FLAG_LEDC_YELLOW:
+        {
+            ledc_set_duty(ledc_green_channel.speed_mode, ledc_green_channel.channel, adc_val_first_led);
+            ledc_set_duty(ledc_red_channel.speed_mode, ledc_red_channel.channel, adc_val_second_led);
+            ledc_update_duty(ledc_red_channel.speed_mode, ledc_red_channel.channel);
+            ledc_update_duty(ledc_green_channel.speed_mode, ledc_green_channel.channel);
+        }
+        break;
+
+        case FLAG_LEDC_CYAN:
+        {
+            ledc_set_duty(ledc_blue_channel.speed_mode, ledc_blue_channel.channel, adc_val_first_led);
+            ledc_set_duty(ledc_green_channel.speed_mode, ledc_green_channel.channel, adc_val_second_led);
+            ledc_update_duty(ledc_blue_channel.speed_mode, ledc_blue_channel.channel);
+            ledc_update_duty(ledc_green_channel.speed_mode, ledc_green_channel.channel);
+        }
+        break;
+        default:
+            break;
+        }
+
+        vTaskDelay(100 / portTICK_PERIOD_MS);
     }
 }
