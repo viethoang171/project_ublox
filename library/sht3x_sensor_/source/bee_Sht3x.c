@@ -20,6 +20,7 @@
 #include "driver/gpio.h"
 #include "driver/i2c.h"
 
+#include "bee_rs485.h"
 #include "bee_Sht3x.h"
 
 /* -- platform dependent definitions ------------------------------- */
@@ -234,6 +235,9 @@ static void sht3x_vProcess_data_sensor(void *pvParameters)
             f_Sht3x_temp = temperature;
             f_Sht3x_humi = humidity;
         }
+        char message[255];
+        snprintf(message, 255, "Nhiet do: %.2f\n Do am: %.2f\n", temperature, humidity);
+        TX(UART_PORT_2, message, strlen(message));
         // Wait until 2 seconds (cycle time) are over.
         vTaskDelayUntil(&last_wakeup, 2000 / portTICK_PERIOD_MS);
     }
