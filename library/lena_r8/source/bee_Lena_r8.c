@@ -152,7 +152,7 @@ static void mqtt_vParse_json(char *rxBuffer)
 
         if (device_id != NULL && cmd_name != NULL)
         {
-            if (strcmp(device_id, mac_address) == 0 && strcmp(cmd_name, "Bee.conf") == 0)
+            if (strcmp(device_id, mac_address) == 0 && strcmp(cmd_name, "Bee.data") == 0)
             {
                 object_type = cJSON_GetObjectItemCaseSensitive(root, "object_type")->valuestring;
                 if (object_type != NULL)
